@@ -1,9 +1,14 @@
+# ----------------------------------------------------------------------------
+# Prepare your app deployment tools and resources
+# ----------------------------------------------------------------------------
+
 # Docker Desktop
 # https://docs.docker.com/desktop/install/windows-install/
 docker version
 
 # .NET SDK
 dotnet --list-sdks
+dotnet --version
 
 # VS Code with extensions
 # https://code.visualstudio.com/
@@ -14,7 +19,7 @@ code --install-extension ms-azuretools.vscode-azureappservice
 # Azure CLI
 az version
 az upgrade 
-az extension list --output table
+az extension list --output table --query "[].{name:name, version:version, preview:preview, experimental:experimental}"
 az extension add --name containerapp --upgrade
 
 # PowerShell 7
@@ -24,7 +29,7 @@ $psversiontable
 az login --tenant "819ebf55-0973-4703-b006-581a48f25961"
 az account list --all --query "[].{name:name, state:state, isDefault:isDefault, subscriptionId:id, tenantId:tenantId}" --output table
 az account set --subscription "ece756e9-1860-4c65-a982-cfb8ac39e0d2"
-az account show
+az account show --query "{subscriptionName:name, subscriptionId:id, state:state, tenantId:tenantId, user:user.name}"
 
 # --- Variables ---------------
 $location = 'westeurope'
@@ -78,6 +83,20 @@ docker image ls
 az acr login --name $acr
 docker push "$loginserver/aspnetcorecontainer:v1"
 
-# Azure DevOps and starter pipeline
-#
-# Azure Portal
+# Azure DevOps and starter pipeline --> Azure Portal
+
+# Deploy a self-hosted Windows agent --> Azure DevOps Portal
+
+
+
+# ------------------------------------------------------------------------------------------------
+# Exercise - Configure Azure Container Registry for a secure connection with Azure Container Apps
+# ------------------------------------------------------------------------------------------------
+
+# Configure a user-assigned managed identity
+$mi = 'mi-az2003'
+az identity create --name $mi --resource-group $rg --location $location
+az identity show --name $mi --resource-group $rg --query "{name:name, location:location, principalId:principalId, clientId:clientId}" --output table
+az identity list --query "[].{name:name, location:location, principalId:principalId, Type:type}" --output table
+
+# Container Registry with AcrPull permissions for the managed identity
