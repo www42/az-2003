@@ -25,19 +25,23 @@ az extension add --name containerapp --upgrade
 # PowerShell 7
 $psversiontable
 
-# Azure login
-az login --tenant "819ebf55-0973-4703-b006-581a48f25961"
-az account list --all --query "[].{name:name, state:state, isDefault:isDefault, subscriptionId:id, tenantId:tenantId}" --output table
-az account set --subscription "ece756e9-1860-4c65-a982-cfb8ac39e0d2"
-az account show --query "{subscriptionName:name, subscriptionId:id, state:state, tenantId:tenantId, user:user.name}"
 
 # --- Variables ---------------
-$location = 'westeurope'
-$rg       = 'rg-az2003'
-$vnet     = 'vnet-az2003'
-$sb       = 'sb-az2003'
-$acr      = 'acr2003'
+$tenant       = '819ebf55-0973-4703-b006-581a48f25961'
+$subscription = 'ece756e9-1860-4c65-a982-cfb8ac39e0d2'
+$location     = 'westeurope'
+$rg           = 'rg-az2003'
+$vnet         = 'vnet-az2003'
+$sb           = 'sb-az2003'
+$acr          = 'acr2003'
 # -----------------------------
+
+# Azure login
+az login --tenant $tenant
+az account list --all --query "[].{name:name, state:state, isDefault:isDefault, subscriptionId:id, tenantId:tenantId}" --output table
+az account set --subscription $subscription
+az account show --query "{subscriptionName:name, subscriptionId:id, state:state, tenantId:tenantId, user:user.name}"
+
 
 # Resource group
 az group create --name $rg --location $location
@@ -93,10 +97,25 @@ docker push "$loginserver/aspnetcorecontainer:v1"
 # Exercise - Configure Azure Container Registry for a secure connection with Azure Container Apps
 # ------------------------------------------------------------------------------------------------
 
+# Review
+az resource list --resource-group $rg --query "sort_by([].{Type:type, name:name, location:location}, &Type)" --output table
+
+
 # Configure a user-assigned managed identity
 $mi = 'mi-az2003'
 az identity create --name $mi --resource-group $rg --location $location
 az identity show --name $mi --resource-group $rg --query "{name:name, location:location, principalId:principalId, clientId:clientId}" --output table
 az identity list --query "[].{name:name, location:location, principalId:principalId, Type:type}" --output table
+$miid = az identity show --name $mi --resource-group $rg --query principalId --output tsv
+# not assigned to any resources yet
 
-# Container Registry with AcrPull permissions for the managed identity
+
+# Configure Container Registry with AcrPull permissions for the managed identity
+az role definition list --query "[?roleName=='AcrPull'].{Name:roleName, Description:description, assignableScopes:assignableScopes[0]}" --output table
+az acr show --name $acr --resource-group $rg --query "{name:name, Type:type}" --output table
+$acrid = az acr show --name $acr --resource-group $rg --query "id" --output tsv
+az role assignment create --role 'AcrPull' --assignee $miid --scope $acrid
+az role assignment list --all --query "[?scope=='$acrid'].{roleName:roleDefinitionName, scope:scope}" --output table
+
+
+# Configure Container Registry with a private endpoint connection
