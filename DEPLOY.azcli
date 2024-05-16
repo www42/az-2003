@@ -104,6 +104,7 @@ az resource list --resource-group $rg --query "sort_by([].{Type:type, name:name,
 
 
 # Configure a user-assigned managed identity
+# -------------------------------------------
 $mi = 'mi-az2003'
 az identity create --name $mi --resource-group $rg --location $location
 az identity show --name $mi --resource-group $rg --query "{name:name, location:location, principalId:principalId, clientId:clientId}" --output table
@@ -113,6 +114,7 @@ $miid = az identity show --name $mi --resource-group $rg --query principalId --o
 
 
 # Configure Container Registry with AcrPull permissions for the managed identity
+# -------------------------------------------------------------------------------
 az role definition list --query "[?roleName=='AcrPull'].{Name:roleName, Description:description, assignableScopes:assignableScopes[0]}" --output table
 az acr show --name $acr --resource-group $rg --query "{name:name, Type:type}" --output table
 $acrid = az acr show --name $acr --resource-group $rg --query "id" --output tsv
@@ -121,6 +123,7 @@ az role assignment list --all --query "[?scope=='$acrid'].{roleName:roleDefiniti
 
 
 # Configure Container Registry with a private endpoint connection
+# ----------------------------------------------------------------
 
 # Im Portal: Das Deployment erzeugt
 #   - Microsoft.Network/privateEndpoints                                 mit NIC
@@ -140,6 +143,77 @@ az resource list --resource-group $rg --query "sort_by([].{Type:type, name:name,
 #                                    --vnet-name $vnet --subnet 'PESubnet' `
 #                                    --nic-name "nic-$pe"
 
-az network private-endpoint list --resource-group $rg --query "[].{Type:type, name:name, networkInterfaces:networkInterfaces[0].id, privateLinkServiceConnections:privateLinkServiceConnections[0].{name:name, groupIds:groupIds} }"
-az network nic list --resource-group $rg --query "[].{name:name, location:location}" --output table
-az network nic show --name "pe-acr-az2003-nic" --resource-group $rg --query "{name:name, Type:type, privateIPAddress:ipConfigurations[].privateIPAddress, privateEndpoint:privateEndpoint.id}" 
+az network private-endpoint list --resource-group $rg --query "[].{name:name, Type:type, location:location}" --output table
+az network private-endpoint show --name 'pe-acr-az2003' --resource-group $rg --query "{Type:type, name:name, networkInterfaces:networkInterfaces[0].id, privateLinkServiceConnections:privateLinkServiceConnections[0].{name:name, groupIds:groupIds} }"
+
+az network private-endpoint-connection list --name 'acr2003' --type Microsoft.ContainerRegistry/registries --resource-group $rg
+
+az network private-endpoint dns-zone-group list --endpoint-name 'pe-acr-az2003' --resource-group $rg 
+
+az network nic list --resource-group $rg --query "[].{name:name, Type:type, location:location}" --output table
+az network nic show --name 'pe-acr-az2003-nic' --resource-group $rg --query "{name:name, Type:type, privateIPAddress:ipConfigurations[].privateIPAddress, privateEndpoint:privateEndpoint.id}"
+
+az network private-dns zone list --resource-group $rg --query "[].{name:name, Type:type, location:location}" --output table
+az network private-dns zone show --name 'privatelink.azurecr.io' --resource-group $rg --query "{name:name, Type:type, location:location, numberOfRecordSets:numberOfRecordSets, numberOfVirtualNetworkLinks:numberOfVirtualNetworkLinks}"
+
+
+# Check your work
+# ----------------
+# im Portal
+
+
+# ------------------------------------------------------------------------------------------------
+# Exercise - Create and configure a container app in Azure Container Apps
+# ------------------------------------------------------------------------------------------------
+
+# im Portal
+
+# Create a container app that uses an ACR image
+# ---------------------------------------------
+# Configure the container app to authenticate using the user assigned identity
+# ----------------------------------------------------------------------------
+# Configure a connection between the container app and Service Bus
+# ----------------------------------------------------------------
+# Configure HTTP scale rules
+# --------------------------
+# Check your work
+# ---------------
+az containerapp list --resource-group $rg --query "[].{name:name, location:location, runningStatus:properties.runningStatus}" --output table
+az containerapp show --name 'aca-az2003' --resource-group $rg --query "{name:name, location:location, connections:properties.connections}" --output table # No connection
+az containerapp connection list --name 'aca-az2003' --resource-group $rg  # does not work
+az containerapp connection show --connection 'servicebus_2768a' --name 'aca-az2003' --resource-group $rg  # does not work
+
+# To verify your HTTP scale rule, run testing software to simulate 10,000 concurrent HTTP requests and ensure that container replicas are created. --> ???
+
+
+
+# ------------------------------------------------------------------------------------------------
+# Exercise - Configure continuous integration by using Azure Pipelines
+# ------------------------------------------------------------------------------------------------
+
+# Configure Pipeline1 to use the self-hosted agent pool
+# ------------------------------------------------------
+# Configure Pipeline1 with an Azure Container Apps deployment task
+# --------------------------------------------------------------
+# Run the Pipeline1 deployment task
+# ---------------------------------
+# Check your work
+# ---------------
+
+
+
+# ------------------------------------------------------------------------------------------------
+# Exercise - Manage revisions in Azure Container Apps
+# ------------------------------------------------------------------------------------------------
+
+# Set revision management to multiple
+# -----------------------------------
+# Create a new revision with a v2 suffix
+# ---------------------------------------
+# Configure labels on the revisions
+# ---------------------------------
+# Configure a traffic percentage on the revisions
+# ----------------------------------------------
+# Check your work
+# ---------------
+
